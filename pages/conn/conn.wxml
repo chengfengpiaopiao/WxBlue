@@ -1,0 +1,54 @@
+<view class="container2">
+  <view class="fontS">deviceId : {{deviceId}}</view>
+  <view class="fontS">name : {{name}}</view>
+  
+  <view class="ss2" />
+  <view class="ss" />
+
+  <view class="fontS2">获取蓝牙设备所有 service（服务列表）:</view>
+
+  <view wx:for="{{services}}" wx:for-item="item"
+         data-uuid="{{item.uuid}}" 
+         wx:key="{{item.uuid}}"
+         bindtap="bindItemTap">
+    <view class="item">
+      <view>蓝牙设备服务的 uuid = {{item.uuid}}</view>
+      <view> 该服务是否为主服务: {{item.isPrimary}}
+      </view>
+      <view class="ss" />
+    </view>
+  </view>
+
+
+
+
+
+  <view class="fontS2" >当前使用的蓝牙设备服务的 uuid：{{serviceId}}</view>
+  <view class="ss" />
+
+  <view class="fontS2">获取蓝牙设备所有 characteristic（特征值）:</view>
+  <view wx:for="{{characteristics}}" wx:for-item="item"   data-uuid="{{item.uuid}}" wx:key="{{item.uuid}}"
+    bindtap="choseCahraraTap"
+    >
+    <view class="item2">
+      <view>蓝牙设备特征值的 uuid = {{item.uuid}}</view>
+      <view> 该特征值支持的操作类型 : read={{item.properties.read}}; write={{item.properties.write}}; notify={{item.properties.notify}}; indicate={{item.properties.indicate}}
+      </view>
+      <view class="ss" />
+    </view>
+  </view>
+
+ <view class="fontS2" >当前使用的蓝牙设备特征值 uuid：{{currentUUID}}</view>
+
+
+  <view class="ss2" />
+  <!-- <view class="message">
+    <input class="message" text="text" placeholder="请输入信息" bindinput="inputTextchange" />
+  </view> -->
+
+
+  <button type="primary" bindtap="bindUnlock" class="lock" > {{lockData}} </button>
+  <view class="ss2" />
+
+  <view class="fontS3">结果：{{result}}</view>
+</view>

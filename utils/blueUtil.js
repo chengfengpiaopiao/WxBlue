@@ -1,0 +1,1 @@
+//getInfo --> mcuid --> protocoltime
