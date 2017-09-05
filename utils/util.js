@@ -21,7 +21,8 @@ function formatNumber(n) {
 module.exports = {
   formatTime: formatTime,
   Encrypt: Encrypt,
-  Decrypt: Decrypt
+  Decrypt: Decrypt,
+  promiseRetry: promiseRetry
 }
 
 
@@ -80,4 +81,29 @@ function Bytes2Str(arr) {
     str += tmp;
   }
   return str;
+}
+
+//重试机制
+function promiseRetry(opts) {
+  var originalFn;
+  opts = Object.assign({
+    times: 0,
+    delay: 0
+  }, opts);
+
+  return function exec(fn) {
+    if (!originalFn) originalFn = fn;
+    return fn().catch(function (error) {
+      if (opts.times-- <= 0) return Promise.reject(error);
+      return exec(delay);
+    });
+  };
+
+  function delay() {
+    return new Promise(function (resolve) {
+      setTimeout(function () {
+        resolve(originalFn());
+      }, opts.delay);
+    })
+  }
 }

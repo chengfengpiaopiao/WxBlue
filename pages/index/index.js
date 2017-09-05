@@ -3,6 +3,7 @@
 var app = getApp()
 var utils = require('../../utils/util');
 var encStr;
+var that;
 Page({
   data: {
     motto: 'Hello World',
@@ -48,17 +49,11 @@ Page({
 
   onLoad: function () {
     console.log('onLoad')
-  
-    var that = this
-
-
-
+    that = this;
+    that.testPromise();
     // var typedArray = new Uint8Array([1, 2, 3, 4]);
     // console.log("bufferLength = ",typedArray.byteLength);
     // console.log(Array.from(typedArray));
-
-
-
 
     //调用应用实例的方法获取全局数据
     // app.getUserInfo(function (userInfo) {
@@ -67,16 +62,65 @@ Page({
     //     userInfo: userInfo
     //   })
     // })
-
-
-
   },
-  encrypting: function () {
 
+
+//重试机制
+  testPromise: function () {
+
+    var promiseRetryInstance = that.promiseRetry({ 
+      times: 2, delay: 2000 });
+
+    promiseRetryInstance(that.fetchComList).then(function (data) {
+      console.log(data)
+    }).catch(function (err) {
+      console.log(err);
+      }).then(that.fetchComList);
+  },
+
+  fetchComList: function () {
+
+    var p = new Promise(function (resolve, reject) {
+      setTimeout(function () {
+        console.log('异步任务1执行完成');
+        resolve('随便什么数据1');
+        //reject("错误啦");
+      }, 1000);
+    });
+    return p;
+  },
+
+  promiseRetry: function (opts) {
+
+    var originalFn;
+    //设置
+    opts = Object.assign({
+      times: 0,
+      delay: 0
+    }, opts);
+
+    return function exec(fn) {
+      if (!originalFn) originalFn = fn;
+      return fn().catch(function (error) {
+        if (opts.times-- <= 0) return Promise.reject(error);
+        return exec(delay);
+      });
+    };
+
+    //延时处理
+    function delay() {
+      return new Promise(function (resolve) {
+        setTimeout(function () {
+          resolve(originalFn());
+        }, opts.delay);
+      })
+    }
+  },
+
+  encrypting: function () {
     
     // var data = "f0f2f3f5f3";
     // console.log(this.Str2Bytes(data));
-
     var time = new Date().getTime();
     console.log(time);
     app.globalData.time = time;
@@ -84,13 +128,14 @@ Page({
     var dataArray = this.strToHexCharCode(dataStr);
     console.log("dataArray", dataArray);
     encStr = utils.Encrypt(dataStr);
-    
+
     console.log("加密后的结果为===", encStr.length);
     console.log(encStr);
     this.setData({
       encryptData: encStr
     })
   },
+
   decrypting: function () {
     //var str = utils.Decrypt("DCB4EF4BA9504D81C0E1274DDCDFE3A20F1B");
     var str = utils.Decrypt("dcb4ee43a8524e84c2e1631b86f1c28f");
@@ -99,11 +144,12 @@ Page({
       decryptData: str
     })
   },
+
   strToHexCharCode: function (str) {
     if (str === "")
       return "";
     var hexCharCode = [];
-    
+
     for (var i = 0; i < str.length; i++) {
       hexCharCode.push(parseInt(str.charCodeAt(i).toString(16)));
     }

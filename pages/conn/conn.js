@@ -33,12 +33,9 @@ Page({
       mask: false
     })
     var that = this;
-    console.log('传递过来的 deviceId= ' + opt.deviceId);
-    console.log('传递过来的 name='  + opt.name);
     that.setData({ deviceId: opt.deviceId });
     that.setData({ name: opt.name });
     wx.onBLEConnectionStateChanged(function (res) {
-      // console.log(`device ${res.deviceId} state has changed, connected: ${res.connected}`)
     })
     wx.createBLEConnection({
       deviceId: that.data.deviceId,
@@ -51,18 +48,8 @@ Page({
         wx.getBLEDeviceServices({
           deviceId: that.data.deviceId,
           success: function (res) {
-            // console.log("服务列表----：", res);
-            // console.log('device services:', res.services)
             var servicesStr = res.services;
             that.setData({ services: servicesStr });
-            // console.log('device services:', res.services[0].uuid);//服务
-
-            // console.log('--------------------------------------');
-            // console.log('device设备的id:', that.data.deviceId);
-            // console.log('device设备的服务id:', that.data.serviceId);
-            /**
-             * 延迟3秒，根据服务获取特征 
-             */
           }
         })
       },
@@ -86,15 +73,8 @@ Page({
         // 这里的 serviceId 需要在上面的 getBLEDeviceServices 接口中获取
         serviceId: uuid,
         success: function (res) {
-          // console.log("服务id获取服务特征列表----：", res);
           var characteristicsStr = res.characteristics;
-          // console.log("characteristicsStr", characteristicsStr);
-          // console.log("Length", characteristicsStr.length);
           that.setData({ characteristics: characteristicsStr });
-
-          // console.log('000000000000  ' + that.data.serviceId);
-          // console.log('device getBLEDeviceCharacteristics:', res.characteristics)
-
         }, fail: function (res) {
           console.log(res);
         },
@@ -106,12 +86,11 @@ Page({
     }, 1500);
 
   },
-
-  buf2hex: function (buffer) { // buffer is an ArrayBuffer
+ // buffer is an ArrayBuffer
+  buf2hex: function (buffer) {
     return Array.prototype.map.call(new Uint8Array(buffer), x => ('00' + x.toString(16)).slice(-2)).join('');
   },
   inputTextchange: function (e) {
-    // console.log(e)
     this.setData({
       inputValue: e.detail.value
     })
