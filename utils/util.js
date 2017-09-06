@@ -55,6 +55,29 @@ function Decrypt(word) {
   return ub;
 }
 
+/****************************************BlueUtils*************************************** */
+var Bluetooth = (typeof window === 'undefined') ? module.exports.Bluetooth = {} : window.Bluetooth = {};
+
+var time = 0 ;
+var util = Bluetooth.util = {
+  writeDataToDevice: function (deviceParams, arrayBuffer){
+  
+    return new Promise(function (resolve, reject) {
+      //console.error("time",time ++);
+      wx.writeBLECharacteristicValue({
+        deviceId: deviceParams.deviceId,
+        serviceId: deviceParams.serviceId,
+        characteristicId: deviceParams.characteristicId,
+        value: arrayBuffer,
+        success: resolve(),
+        fail: function(res){
+          reject(res);
+        },
+      })
+    })
+  }
+}
+
 function Str2Bytes(str) {
 
   var pos = 0;
@@ -106,6 +129,15 @@ function Bytes2Str(arr) {
 }
 
 //重试机制
+/**
+ * 
+ * var promiseRetryInstance = promiseRetry({times: 2, delay: 2000});
+    promiseRetryInstance(fetchComList).then(function (data) {
+        console.log(data)
+    }).catch(function (err) {
+        console.log(err);
+    });
+ */
 function promiseRetry(opts) {
   
   var originalFn;
@@ -117,7 +149,8 @@ function promiseRetry(opts) {
   return function exec(fn) {
     if (!originalFn) originalFn = fn;
     return fn().catch(function (error) {
-      if (opts.times-- <= 0) return Promise.reject(error);
+      if (opts.times-- <= 0) 
+        return Promise.reject(error);
       return exec(delay);
     });
   };
@@ -139,3 +172,33 @@ function wxWrap (func) {
   };
 };
 //var showModal = wxWrap(wx.showModal);
+
+/**
+ * 
+ * function promiseRetry(opts) {
+
+  var originalFn;
+  opts = Object.assign({
+    times: 0,
+    delay: 0
+  }, opts);
+
+  return function exec(fn) {
+    if (!originalFn) originalFn = fn;
+    return fn().catch(function (error) {
+      if (opts.times-- <= 0)
+        return Promise.reject(error);
+      return exec(delay);
+    });
+  };
+
+  function delay() {
+    return new Promise(function (resolve) {
+      setTimeout(function () {
+        resolve(originalFn());
+      }, opts.delay);
+    })
+  }
+}
+
+ */

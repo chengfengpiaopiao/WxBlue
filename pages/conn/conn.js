@@ -1,5 +1,10 @@
 var Crypto = require('../../utils/cryptojs/cryptojs.js').Crypto;
+var Bluetooth = require('../../utils/util').Bluetooth;
 var utils = require('../../utils/util');
+var hasInit = false
+var deviceSendData = false;
+var getInfoTimer = undefined;
+
 var that;
 Page({
   data: {
@@ -18,7 +23,7 @@ Page({
     characteristics02: null,
     characteristics03: null,
     characteristics04: null,
-    result:"",
+    result: "",
     inputValue: "",
     mcuid: "",
     togtherTime: "",
@@ -29,15 +34,14 @@ Page({
   },
 
   onLoad: function (option) {
-
     that = this;
-    utils.showWrapLoading({"title": "连接低功耗蓝牙中" , mask: true , duration: 2000});
+    utils.showWrapLoading({ "title": "连接低功耗蓝牙中", mask: true, duration: 2000 });
     that.setData({ deviceId: option.deviceId });
     that.setData({ name: option.name });
     wx.createBLEConnection({
       deviceId: that.data.deviceId,
       success: function (res) {
-        utils.showWrapLoading({"title": "硬件连接成功", mask: true, duration: 2000 });
+        utils.showWrapLoading({ "title": "硬件连接成功", mask: true, duration: 2000 });
         wx.getBLEDeviceServices({
           deviceId: that.data.deviceId,
           success: function (res) {
@@ -58,10 +62,11 @@ Page({
     })
   },
 
-  onShow: function(){
+  onShow: function () {
     //监听硬件连接状态
     wx.onBLEConnectionStateChanged(function (res) {
     })
+    getInfoTimer = undefined;
   },
 
   getCharaties: function (uuid) {
@@ -86,117 +91,106 @@ Page({
     }, 1500);
 
   },
- // buffer is an ArrayBuffer
-  buf2hex: function (buffer) {
-    return Array.prototype.map.call(new Uint8Array(buffer), x => ('00' + x.toString(16)).slice(-2)).join('');
-  },
-  inputTextchange: function (e) {
-    this.setData({
-      inputValue: e.detail.value
-    })
-  },
-  frameToString: function (frame) {
-    return Array.prototype.map.call(new Uint8Array(frame), x => ('00' + x.toString(16)).slice(-2)).join('')
-  },
-  _base64ToArrayBuffer(base64) {
-    var binary_string = base64;
-    var len = binary_string.length;
-    var bytes = new Uint8Array(len);
-    for (var i = 0; i < len; i++) {
-      bytes[i] = binary_string.charCodeAt(i);
-    }
-    return bytes.buffer;
-  },
-  _arrayBufferToBase64(buffer) {
-    var binary = '';
-    var bytes = new Uint8Array(buffer);
-    var len = bytes.byteLength;
-    for (var i = 0; i < len; i++) {
-      binary += String.fromCharCode(bytes[i]);
-    }
-    return binary;
-  }
-  ,
+
   //开锁
   bindUnlock: function () {
-    console.log("-------------------------------我是分割线--------------------------------------");
-    var that = this;
-    if (that.data.mcuid != "" && that.data.togtherTime != "") {
-      if (that.data.lockState) {
-        var encryptData = utils.Encrypt(that.data.togtherTime + "lock");
-        that.writeDataToDevice("24" + encryptData + "3b");
-      } else {
-        var encryptData = utils.Encrypt(that.data.togtherTime + "unlock");
-        that.writeDataToDevice("24" + encryptData + "3b");
-      }
-    } else {
-      var data = "$getinfo;"
-      that.writeDataToDevice(data);
-    }
+    that.sendGetInfo();
   },
 
-  writeDataToDevice: function (value) {
-    console.log("app 发送数据 to 设备 -----------> ", value);
+  sendGetInfo: function () {
+    deviceSendData = false;//重新获取gitInfo
+    var promiseRetryInstance = utils.promiseRetry({ times: 2, delay: 3000 });
+    return promiseRetryInstance(that.sendDataToDev)
+      .then(function () {
+        console.log("[/resolve]", "发送ok  deviceSendData : " + deviceSendData);
+      //1轮询getInfo的数据
+        if (!deviceSendData) {
+          let times = 0
+          if (!getInfoTimer) {
+            if (deviceSendData){
+              return;
+            }
+            getInfoTimer = setInterval(function () {
+              console.error("deviceSendData", deviceSendData);
+              console.info("times", times);
+              that.sendDataToDev(that.data.cd20, "$getinfo;")//Promise
+              times++;
+              // if (times > 2) {
+              //   clearInterval(getInfoTimer);
+              // }
+              if (deviceSendData){
+                clearInterval(getInfoTimer);
+              }
+            }, 1000);
+          }
+        }else{
+          Promise.resolve();
+        }
+    }, function (rejectData) {
+      console.log("[/reject]", rejectData);
+      utils.showWrapLoading({
+        "title": data,
+        mask: true,
+        duration: 2000
+      });
+      clearInterval(getInfoTimer);
+    });
+  },
+
+  sendDataToDev: function (chara, aim){
+    console.log("sending.................................");
     var arrayBuffer = new ArrayBuffer();
-    var that = this;
-    if (value == "$getinfo;") {
-      arrayBuffer = that._base64ToArrayBuffer(value);
-      var data = that._arrayBufferToBase64(arrayBuffer);
-      //console.log("_arrayBufferToBase64 = ", data);
-    } else {
-      //转为字节数组
-      var valueArray = Crypto.util.hexToBytes(value);
-      if (that.data.lockState){
-        console.log("app 发送数据 to 设备 ( 关锁 )----> ", valueArray);
-      }else{
-        console.log("app 发送数据 to 设备 ( 开锁 )----> ", valueArray);
-      }
-     
-      //var vArray = new Uint8Array(valueArray);
-      //arrayBuffer = new Uint8Array(valueArray).buffer;
-     // console.log("bufferLength = ", arrayBuffer.byteLength);
-      //console.log(Array.from(vArray));
-
-      arrayBuffer = new ArrayBuffer(valueArray.length)
-      let dataView = new DataView(arrayBuffer)
-      for(let i = 0 ; i < valueArray.length ; i ++){
-        dataView.setUint8(i, valueArray[i])
-        // console.log("-----", dataView.getUint8(i));
-      }
+    var charaStr = chara;
+    let dataView = undefined;
+    switch (aim){
+      case "$getInfo;":
+        arrayBuffer = that._base64ToArrayBuffer(aim);
+        console.info("[/GET-INFO]app 发送数据 to 设备 ", that._arrayBufferToBase64(arrayBuffer));
+      break;
+      case "unlock":
+        var encryptData = utils.Encrypt(that.data.togtherTime + "unlock");
+        var valueArray = Crypto.util.hexToBytes("24" + encryptData + "3b");
+        console.info("[/unlock]", valueArray);
+        arrayBuffer = new ArrayBuffer(valueArray.length)
+        dataView = new DataView(arrayBuffer)
+        for (let i = 0; i < valueArray.length; i++) {
+          dataView.setUint8(i, valueArray[i])
+        }
+      break;
+      case "lock":
+        var encryptData = utils.Encrypt(that.data.togtherTime + "lock");
+        var valueArray = Crypto.util.hexToBytes("24" + encryptData + "3b");
+        console.info("[/lock]", valueArray);
+        arrayBuffer = new ArrayBuffer(valueArray.length)
+        dataView = new DataView(arrayBuffer)
+        for (let i = 0; i < valueArray.length; i++) {
+          dataView.setUint8(i, valueArray[i])
+        }
+      break;
+      default:
+        if(!aim){
+          aim = "$getInfo;"
+        }
+        arrayBuffer = that._base64ToArrayBuffer(aim);
+        console.info("[/GET-INFO]app 发送数据 to 设备", that._arrayBufferToBase64(arrayBuffer));
+      break
     }
 
-    console.log("app 发送数据 to 设备 （ 字节长度 ） = ", arrayBuffer.byteLength);
-
-    wx.writeBLECharacteristicValue({
-      deviceId: that.data.deviceId,
-      serviceId: that.data.serviceId,
-      characteristicId: that.data.cd20,
-      value: arrayBuffer,
-      success: function (res) {
-        // success
-        console.log(res);
-        wx.showToast({
-          title: '指令发送成功',
-          duration: 1200
-        })
-      },
-      fail: function (res) {
-        console.log(res);
-        wx.showToast({
-          title: '指令发送失败' + res.errCode,
-          duration: 2000
-        })
-      },
-      complete: function (res) {
-      }
-    })
+    if (!charaStr){
+      charaStr = that.data.cd20
+    }
+    return Bluetooth.util.writeDataToDevice({ //reject会重发两次 Promise
+      "deviceId": that.data.deviceId,
+      "serviceId": that.data.serviceId,
+      "characteristicId": charaStr
+    }, arrayBuffer)
   },
-  dealWithMCUID: function (dataView, cb) {
-    var that = this;
+
+  //解密getInfo数据
+  dealdeviceGetInfo: function (dataView,STATE){
     var dataToStr = ""
     for (let i = 1; i < dataView.byteLength - 1; i++) {//字节数组转16进制
       var orign = dataView.getUint8(i).toString(16);//十进制转16进制
-      // var int16 = dataView.getInt8(i)
       var data = "0"
       if (orign.length < 2) {
         data += orign
@@ -206,152 +200,87 @@ Page({
         data += orign
       }
     }
-    console.log("-------设备 返回数据 to app ( $getInfo; )---> ", dataToStr);
+
+    console.log("[/device]设备 返回数据 to app string: ", dataToStr);
     var decryptData = utils.Decrypt(dataToStr);
-    var mcuid = decryptData.substring(decryptData.length - 8, decryptData.length);
-    var togtherTime = decryptData.substring(0, 10);
-    console.log("-------设备 返回数据 to app ( $getInfo; )---> 解密--->mcuid：", mcuid);
-    console.log("-------设备 返回数据 to app ( $getInfo; )---> 解密--->togtherTime：", togtherTime);
 
-    that.setData({
-      mcuid: mcuid,
-      togtherTime: togtherTime
-    });
-    //区分开锁关锁
-    if (cb == "lock") {
-      that.lockData(togtherTime);
+    switch(STATE){
+      case "GET":
+        var mcuid = decryptData.substring(decryptData.length - 8, decryptData.length);
+        var togtherTime = decryptData.substring(0, 10);
+        console.log("[/getInfo]设备 返回数据 to app mcuid: ", mcuid);
+        console.log("[/getInfo]设备 返回数据 to app togtherTime: ", togtherTime);
+        that.setData({
+          mcuid: mcuid,
+          togtherTime: togtherTime
+        });
+        //开锁 || 关锁
+        clearInterval(getInfoTimer);
+        if (!that.data.lockState) {
+          that.sendDataToDev(that.data.cd20, "unlock")
+        } else {
+          that.sendDataToDev(that.data.cd20, "lock")
+        }
+      break;
+      case "LOCK":
+        var togtherTime = decryptData.substring(0, 10);
+        var stateRETURN = decryptData.substring(10, decryptData.length);
+        console.log("[/LOCK]设备 返回数据 to app togtherTime: ", togtherTime);
+        console.log("[/LOCK]设备 返回数据 to app stateRETURN: ", stateRETURN);
+        if (stateRETURN == "unlocked"){
+          that.setData({
+            lockState: true,
+            lockData: "关锁"
+          });
+          utils.showWrapLoading({ "title": "开锁成功", mask: true, duration: 2000 });
+        }
+        if (stateRETURN == "locked"){
+          that.setData({
+            lockState: false,
+            lockData: "开锁"
+          }); aA
+          utils.showWrapLoading({ "title": "关锁成功", mask: true, duration: 2000 });
+        }
+      break;
     }
-    if (cb == "unlock") {
-      that.unlockData(togtherTime);
-    }
-  },
-
-  unlockData: function (togtherTime) {
-    var that = this;
-    //加密：开锁数据
-    let encryptData = utils.Encrypt(togtherTime + "unlock");
-    that.writeDataToDevice("24" + encryptData + "3b");
-    // that.setData({
-    //   lockState: true,
-    //   lockData: "关锁"
-    // });
-  },
-
-  lockData: function (togtherTime) {
-    var that = this;
-    let encryptData = utils.Encrypt(togtherTime + "lock");
-    that.writeDataToDevice("24" + encryptData + "3b");
   },
 
   developCahara: function () {
     var that = this;
     setTimeout(function () {
-
       wx.onBLECharacteristicValueChange(function (characteristic) {
+        console.log("receiving.................................");
         let charaId = characteristic.characteristicId
         var arrayBuffer = characteristic.value
-        console.log("设备 send data to 小程序 ---> " +  " 字节长度  = ", arrayBuffer.byteLength);
-        if (that.data.mcuid != "" && that.data.togtherTime != "") {
-          var dataView = new DataView(arrayBuffer)
-          //处理返回数据
-          //解密
-          var dataToStr = ""
-          for (let i = 1; i < dataView.byteLength - 1; i++) {//字节数组转16进制
-            var orign = dataView.getUint8(i).toString(16);//十进制转16进制
-            // var int16 = dataView.getInt8(i)
-            var data = "0"
-            if (orign.length < 2) {
-              data += orign
-              dataToStr += data
-            } else {
-              dataToStr += orign
-              data += orign
-            }
-          }
-          console.log("设备开锁 & 关锁 返回（解密前）----> ", dataToStr);
-          var decryptData = utils.Decrypt(dataToStr);
-          var togtherTime = decryptData.substring(0, 10);
-          var own = decryptData.substring(10, decryptData.length);
-          console.log("设备开锁 & 关锁 （解密后）---- togtherTime", togtherTime);
-
-          if (own == "unlocked"){
-              //开锁成功
-            console.log("设备开锁成功 （解密后） ---- own", own);
-             that.setData({
-                 lockState: true,
-                 lockData: "关锁"
-             });
-          } else if (own == "locked"){
-            //关锁成功
-            console.log("设备关锁成功 （解密后） ---- own", own);
-            that.setData({
-              lockState: false,
-              lockData: "开锁"
-            });
-          }else{
-            console.log("设备返回的数据有误！！！！");
-            wx.showLoading({
-              title: '设备返回数据有误',
-            })
-            setTimeout(function(){
-              wx.hideLoading();
-            },10000);
-          }
-        } else {
-          var  dataView = new DataView(arrayBuffer)
-          if (that.data.lockState) {
-            that.dealWithMCUID(dataView, "lock");
-          } else {
-            that.dealWithMCUID(dataView, "unlock");
-          }
+        console.log("设备 send data to 小程序 ---> " + " 字节长度  = ", arrayBuffer.byteLength);
+        var dataView = new DataView(arrayBuffer)
+        
+        if (!hasInit && arrayBuffer.byteLength == 20){
+          deviceSendData = true;//轮询
+          clearInterval(getInfoTimer);
+          hasInit = true;
+          that.dealdeviceGetInfo(dataView,"GET"); //处理getInfo数据
+          return
         }
 
-        // if (!that.data.lockState) { //开锁数据
-        //   that.unlockData(dataView);
-        // } else {  //关锁
-        //   that.lockData(dataView);
-        // }
-
-        // var v = that._arrayBufferToBase64(characteristic.value)
-        // console.log("接受到设备返回的数据包 = ", that._arrayBufferToBase64(characteristic.value));
-        // var destSatr = v.substring(1, v.length - 1);
-        // console.log("dataSatr", destSatr);
-
-        // that.setData({
-        //   result: v
-        // });
-
-        // if (characteristic.characteristicId.indexOf("cd01") != -1) {
-        //   const result = characteristic.value;
-        //   const hex = that.buf2hex(result);
-        //   console.log(hex);
-        // }
-        // if (characteristic.characteristicId.indexOf("cd04") != -1) {
-        //   const result = characteristic.value;
-        //   const hex = that.buf2hex(result);
-        //   console.log(hex);
-        //   that.setData({ result: hex });
-        // }
-
+        if (!hasInit && arrayBuffer.byteLength != 20){
+          return;
+        }
+        that.dealdeviceGetInfo(dataView, "LOCK")
       })
-      /**
-       * 顺序开发设备特征notifiy
-       */
+ 
       wx.notifyBLECharacteristicValueChanged({
         deviceId: that.data.deviceId,
         serviceId: that.data.serviceId,
         characteristicId: that.data.cd01,
         state: true,
         success: function (res) {
-          // success
           console.log('cd01--notifyBLECharacteristicValueChanged success', res);
         },
         fail: function (res) {
-          // fail
           console.log('cd01--notifyBLECharacteristicValueChanged fail', res);
         },
         complete: function (res) {
-          // complete
         }
       })
       wx.notifyBLECharacteristicValueChanged({
@@ -360,15 +289,12 @@ Page({
         characteristicId: that.data.cd02,
         state: true,
         success: function (res) {
-          // success
           console.log('cd02--notifyBLECharacteristicValueChanged success', res);
         },
         fail: function (res) {
-          // fail
           console.log('cd02--notifyBLECharacteristicValueChanged fail', res);
         },
         complete: function (res) {
-          // complete
         }
       })
       wx.hideLoading()
@@ -378,15 +304,12 @@ Page({
         characteristicId: that.data.cd03,
         state: true,
         success: function (res) {
-          // success
           console.log('cd03--notifyBLECharacteristicValueChanged success', res);
         },
         fail: function (res) {
-          // fail
           console.log("cd03--notifyBLECharacteristicValueChanged fail", res);
         },
         complete: function (res) {
-          // complete
         }
 
       }, 1500);
@@ -433,6 +356,7 @@ Page({
     that.setData({ serviceId: uuid });
     that.getCharaties(uuid);
   },
+
   choseCahraraTap: function (e) {
     wx.showLoading({
       title: "正在选择蓝牙特诊值...",
@@ -449,5 +373,35 @@ Page({
     console.log("-------------code20", that.data.cd20);
     //顺序开发特征值并返回数据...
     that.developCahara();
+  },
+
+  buf2hex: function (buffer) {
+    return Array.prototype.map.call(new Uint8Array(buffer), x => ('00' + x.toString(16)).slice(-2)).join('');
+  },
+  inputTextchange: function (e) {
+    this.setData({
+      inputValue: e.detail.value
+    })
+  },
+  frameToString: function (frame) {
+    return Array.prototype.map.call(new Uint8Array(frame), x => ('00' + x.toString(16)).slice(-2)).join('')
+  },
+  _base64ToArrayBuffer(base64) {
+    var binary_string = base64;
+    var len = binary_string.length;
+    var bytes = new Uint8Array(len);
+    for (var i = 0; i < len; i++) {
+      bytes[i] = binary_string.charCodeAt(i);
+    }
+    return bytes.buffer;
+  },
+  _arrayBufferToBase64(buffer) {
+    var binary = '';
+    var bytes = new Uint8Array(buffer);
+    var len = bytes.byteLength;
+    for (var i = 0; i < len; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return binary;
   }
 })

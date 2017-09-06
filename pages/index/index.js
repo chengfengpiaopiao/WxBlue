@@ -2,6 +2,7 @@
 //获取应用实例
 var app = getApp()
 var utils = require('../../utils/util');
+var Bluetooth = require('../../utils/util').Bluetooth;
 var encStr;
 var that;
 Page({
@@ -49,6 +50,8 @@ Page({
 
   onLoad: function () {
     that = this;
+    console.info("Bluetooth", Bluetooth);
+    that.testPromise();
     that.testBindApplyCall();
     that.testMap([0,1,2,3]);
     that.testCurry();
@@ -135,6 +138,42 @@ Page({
   },
 
   /*****************************************test************************************** */
+  testPromise:function(){
+    function fetchComList(){
+      // return new Promise(function (resolve, reject) {
+      //   var time = 0;
+      //   time ++
+      //   console.error("[/testPromise fetch]",time);
+      //   reject("错误");
+      //   //resolve(time);
+      // })
+      var valueArray = [10,20,30]
+      var arrayBuffer = new ArrayBuffer(valueArray.length);
+      var dataView = new DataView(arrayBuffer)
+      for (let i = 0; i < valueArray.length; i++) {
+        dataView.setUint8(i, valueArray[i])
+      }
+      var deviceParams = { "deviceId": "", "serviceId": "", "characteristicId": "", "arrayBuffer": arrayBuffer}
+      return new Promise(function (resolve, reject) {
+        wx.writeBLECharacteristicValue({
+          deviceId: deviceParams.deviceId,
+          serviceId: deviceParams.serviceId,
+          characteristicId: deviceParams.characteristicId,
+          value: deviceParams.arrayBuffer,
+          success: resolve,
+          fail: reject,
+        })
+      })
+    }
+    var promiseRetryInstance = utils.promiseRetry({ times: 2, delay: 2000 });
+    promiseRetryInstance(fetchComList).then(function (data) {
+      console.log("[/testPromise]",data)
+    },function (err) {
+      console.error(err);
+    });
+    //.catch()
+  },
+
   testBindApplyCall:function(){
     function fn(a, b, c, d) {
       　　console.log(a, b, c, d);
