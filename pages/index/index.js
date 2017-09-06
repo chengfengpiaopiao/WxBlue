@@ -23,18 +23,17 @@ Page({
   },
 
   openBlue: function () {
-    wx.openBluetoothAdapter({
-      success: function (res) {
-        //获取本机蓝牙适配器状态
-        wx.navigateTo({
-          url: '../scanble/scanble'
-        })
-      },
-      fail: function (res) {
-        // wx.showToast({
-        //   title: '请打开手机蓝牙',
-        //   duration: 2000
-        // })
+    var openBluetooth = utils.wxWrap(wx.openBluetoothAdapter);
+    console.log("点击");
+    openBluetooth({
+      
+    }).then(function (res) {
+      //获取本机蓝牙适配器状态
+      wx.navigateTo({
+        url: '../scanble/scanble'
+      })
+      }, function (res) {
+        console.log("失败");
         wx.showModal({
           title: ' 温馨提示',
           content: '请打开蓝牙设置',
@@ -43,84 +42,47 @@ Page({
             }
           }
         })
-      }
-    })
+      }).then().catch(function(){
+        
+      })
   },
 
   onLoad: function () {
-    console.log('onLoad')
     that = this;
-    that.testPromise();
-    // var typedArray = new Uint8Array([1, 2, 3, 4]);
-    // console.log("bufferLength = ",typedArray.byteLength);
-    // console.log(Array.from(typedArray));
-
-    //调用应用实例的方法获取全局数据
-    // app.getUserInfo(function (userInfo) {
-    //   //更新数据
-    //   that.setData({
-    //     userInfo: userInfo
-    //   })
-    // })
-  },
-
-
-//重试机制
-  testPromise: function () {
-
-    var promiseRetryInstance = that.promiseRetry({ 
-      times: 2, delay: 2000 });
-
-    promiseRetryInstance(that.fetchComList).then(function (data) {
-      console.log(data)
-    }).catch(function (err) {
-      console.log(err);
-      }).then(that.fetchComList);
-  },
-
-  fetchComList: function () {
-
-    var p = new Promise(function (resolve, reject) {
-      setTimeout(function () {
-        console.log('异步任务1执行完成');
-        resolve('随便什么数据1');
-        //reject("错误啦");
-      }, 1000);
-    });
-    return p;
-  },
-
-  promiseRetry: function (opts) {
-
-    var originalFn;
-    //设置
-    opts = Object.assign({
-      times: 0,
-      delay: 0
-    }, opts);
-
-    return function exec(fn) {
-      if (!originalFn) originalFn = fn;
-      return fn().catch(function (error) {
-        if (opts.times-- <= 0) return Promise.reject(error);
-        return exec(delay);
-      });
-    };
-
-    //延时处理
-    function delay() {
-      return new Promise(function (resolve) {
-        setTimeout(function () {
-          resolve(originalFn());
-        }, opts.delay);
-      })
-    }
-  },
-
-  encrypting: function () {
+    that.testBindApplyCall();
+    that.testMap([0,1,2,3]);
+    that.testCurry();
+    that.testCurry2();
+    var fun = that.testCloser();
+    console.info("[/testCloser]", fun(100));
+    /****************************/
     
-    // var data = "f0f2f3f5f3";
-    // console.log(this.Str2Bytes(data));
+    // utils.showWrapLoading({
+    //   "title": "连接设备中",
+    //   mask: true,
+    //   duration: 1000
+    // });
+
+    // showModal({
+    //   "title":"连接设备中",
+    //    mask:true,
+    //    duration:2000
+    // }).then(function(){
+    //   var p = new Promise(function (resolve, reject) {
+    //     //做一些异步操作
+    //     setTimeout(function () {
+    //       console.log('执行完成');
+    //       resolve('随便什么数据');
+    //     }, 2000);
+    //   });
+    //   return p;         
+    // }).then(function(data){
+    //   console.log("three" + data);
+    // });
+  },
+
+  /*****************************************utils*************************** */
+  encrypting: function () { 
     var time = new Date().getTime();
     console.log(time);
     app.globalData.time = time;
@@ -137,7 +99,6 @@ Page({
   },
 
   decrypting: function () {
-    //var str = utils.Decrypt("DCB4EF4BA9504D81C0E1274DDCDFE3A20F1B");
     var str = utils.Decrypt("dcb4ee43a8524e84c2e1631b86f1c28f");
     console.log("解密后的信息为为==", str);
     this.setData({
@@ -155,6 +116,7 @@ Page({
     }
     return hexCharCode;
   },
+
   Str2Bytes: function (str) {
     var pos = 0;
     var len = str.length;
@@ -170,5 +132,94 @@ Page({
       pos += 2;
     }
     return hexA;
+  },
+
+  /*****************************************test************************************** */
+  testBindApplyCall:function(){
+    function fn(a, b, c, d) {
+      　　console.log(a, b, c, d);
+    }
+    //call
+    fn.call(null, 1, 2, 3);
+    //apply
+    fn.apply(null, [1, 2, 3]);
+    //bind
+    var f = fn.bind(null, 1, 2, 3);
+    f(4);
+  },
+
+  testMap:function(array){
+    let destArry = array.map(function(item){
+      return item * item;
+    });
+    console.info("[testMap]", destArry);
+  },
+
+  /**
+   * 闭包就是能够读取其他函数内部变量的函数。
+   * 由于在Javascript语言中，只有函数内部的子函数才能读取局部变量，
+            因此可以把闭包简单理解成“定义在一个函数内部的函数”。
+            所以，在本质上，闭包就是将函数内部和函数外部连接起来的一座桥梁。
+   * 不足:使用不当容易造成内存浪费
+   */
+  testCloser:function(){
+    let number = 100;
+    return function add(number){
+      return number += 10;
+    }
+  },
+
+  /**
+   * Curry 柯里化
+   */
+  testCurry:function(){
+    var add = function(x){
+      return function(y){
+        return x + y;
+      }
+    }
+    var firstCal = add(10);
+    console.info("[/curry]", firstCal(20));
+    var secondCal = add(100);
+    console.log("[/curry]", secondCal(100));
+  },
+
+  testCurry2:function(){
+
+    //特殊对象 arguments，开发者无需明确指出参数名，就能访问它们
+    //callee 属性的初始值就是正被执行的 Function 对象。
+      //callee 属性是 arguments 对象的一个成员，它表示对函数对象本身的引用，
+          //这有利于匿名函数的递归或者保证函数的封装性，
+    function currying(fn) {
+      var slice = Array.prototype.slice,
+        __args = slice.call(arguments, 1);
+      return function () {
+        var __inargs = slice.call(arguments);
+        return fn.apply(null, __args.concat(__inargs));
+      };
+    }
+
+    function square(i) {
+      return i * i;
+    }
+
+    function dubble(i) {
+      return i *= 2;
+    }
+
+    function map(handeler, list) {
+      return list.map(handeler);
+    }
+    //debugger
+    var mapSQ = currying(map, square);
+    console.info("[/curry2]", mapSQ([1, 2, 3, 4, 5]));
+    console.info("[/curry2]", mapSQ([6, 7, 8, 9, 10]));
+    console.info("[/curry2]", mapSQ([10, 20, 30, 40, 50]));
+    // ......
+
+    var mapDB = currying(map, dubble);
+    mapDB([1, 2, 3, 4, 5]);
+    mapDB([6, 7, 8, 9, 10]);
+    mapDB([10, 20, 30, 40, 50]);
   }
 })

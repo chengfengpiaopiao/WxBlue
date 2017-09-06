@@ -1,8 +1,8 @@
 var Crypto = require('../../utils/cryptojs/cryptojs.js').Crypto;
 var utils = require('../../utils/util');
+var that;
 Page({
   data: {
-    motto: 'Hello World',
     userInfo: {},
     deviceId: '',
     name: '',
@@ -27,24 +27,17 @@ Page({
     lockData: "开锁",
     encryDataStr: ""
   },
-  onLoad: function (opt) {
-    wx.showLoading({
-      title: "连接低功耗蓝牙中",
-      mask: false
-    })
-    var that = this;
-    that.setData({ deviceId: opt.deviceId });
-    that.setData({ name: opt.name });
-    wx.onBLEConnectionStateChanged(function (res) {
-    })
+
+  onLoad: function (option) {
+
+    that = this;
+    utils.showWrapLoading({"title": "连接低功耗蓝牙中" , mask: true , duration: 2000});
+    that.setData({ deviceId: option.deviceId });
+    that.setData({ name: option.name });
     wx.createBLEConnection({
       deviceId: that.data.deviceId,
       success: function (res) {
-        wx.hideLoading()
-        wx.showToast({
-          title: '连接成功',
-          duration: 2000
-        })
+        utils.showWrapLoading({"title": "硬件连接成功", mask: true, duration: 2000 });
         wx.getBLEDeviceServices({
           deviceId: that.data.deviceId,
           success: function (res) {
@@ -64,6 +57,13 @@ Page({
       }
     })
   },
+
+  onShow: function(){
+    //监听硬件连接状态
+    wx.onBLEConnectionStateChanged(function (res) {
+    })
+  },
+
   getCharaties: function (uuid) {
     var that = this;
     setTimeout(function () {
