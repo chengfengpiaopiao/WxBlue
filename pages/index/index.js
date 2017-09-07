@@ -25,7 +25,7 @@ Page({
 
   openBlue: function () {
     var openBluetooth = utils.wxWrap(wx.openBluetoothAdapter);
-    console.log("点击");
+    //console.log("点击");
     openBluetooth({
       
     }).then(function (res) {
@@ -50,14 +50,16 @@ Page({
 
   onLoad: function () {
     that = this;
-    console.info("Bluetooth", Bluetooth);
-    that.testPromise();
-    that.testBindApplyCall();
-    that.testMap([0,1,2,3]);
-    that.testCurry();
-    that.testCurry2();
-    var fun = that.testCloser();
-    console.info("[/testCloser]", fun(100));
+    
+    // console.info("Bluetooth", Bluetooth);
+    // that.testPromise();
+    // that.testBindApplyCall();
+    // that.testMap([0,1,2,3]);
+    // that.testCurry();
+    // that.testCurry2();
+    // var fun = that.testCloser();
+    // console.info("[/testCloser]", fun(100));
+
     /****************************/
     
     // utils.showWrapLoading({

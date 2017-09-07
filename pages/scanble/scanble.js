@@ -1,67 +1,74 @@
 /**
  * 搜索设备界面
  */
+var utils = require('../../utils/util');
 var temp = [];
+var that ;
 Page({
   data: {
-    logs: [],
-    list: [],
-    login: false
+    list: []
   },
   onLoad: function () {
-    var that = this;
+    that= this;
+    /*****获取所有已发现的蓝牙设备，包括已经和本机处于连接状态的设备****/
     wx.getBluetoothDevices({
       success: function (res) {
         if (res.devices.length > 0) {
           temp = res.devices
           for(var i = 0 ; i < temp.length ; i ++){
-            temp[i].advertisData = that._arrayBufferToBase64(temp[i].advertisData )
+            temp[i].advertisData = that._arrayBufferToBase64(temp[i].advertisData)
           }
           that.setData({
             list: temp
           });
-        } else {
-          //监听蓝牙适配器变化
-          wx.onBluetoothAdapterStateChange(function (res) {
-            //console.log("蓝牙适配器状态变化", res)
-          })
         }
       },
       fail: function (res) {
-        console.log("wx.getBluetoothDevices", res);
-      },
-      complete:function(res){
-        //查询到可以连接的蓝牙设备
-        wx.onBluetoothDeviceFound(function (devices) {
-          // console.log(devices)
-          // console.log('new device list has founded')
-          // console.log("----new----", devices.devices[0]);//devices
-          // console.log('设备RSSI' + devices.devices[0].RSSI)
-          // console.log('设备id' + devices.devices[0].deviceId)
-          // console.log('设备name' + devices.devices[0].name)
-          // console.log('设备advertisServiceUUIDs' + devices.devices[0].advertisServiceUUIDs)
-          // console.log("设备的advertisData" + that._arrayBufferToBase64(devices.devices[0].advertisData)) ;
-          devices.devices[0].advertisData = that._arrayBufferToBase64(devices.devices[0].advertisData);
-          temp.push(devices.devices[0])
-          that.setData({
-            list: temp
-          })
-        })
+        console.error("wx.getBluetoothDevices", res);
       }
     })
+  },
 
+  onShow:function(){
+    /*****监听寻找到新设备的事件****/
+    wx.onBluetoothDeviceFound(function (devices) {
+      console.info("[/wx_FOUND]new device list has founded", devices.devices[0]);//devices
+      console.log('设备RSSI' + devices.devices[0].RSSI)
+      console.log('设备id' + devices.devices[0].deviceId)
+      console.log('设备name' + devices.devices[0].name)
+      console.log('设备advertisServiceUUIDs' + devices.devices[0].advertisServiceUUIDs)
+      console.log("设备的advertisData" + that._arrayBufferToBase64(devices.devices[0].advertisData));
+      devices.devices[0].advertisData = that._arrayBufferToBase64(devices.devices[0].advertisData);
+      temp.push(devices.devices[0])
+      that.setData({
+        list: temp
+      })
+    })
+
+    /*****监听蓝牙适配器状态变化事件****/
+    wx.onBluetoothAdapterStateChange(function (res) {
+      //console.log("蓝牙适配器状态变化", res)
+      //utils.showWrapLoading({ "title": "蓝牙适配器", mask: true, duration: 2000 });
+    })
+  },
+
+  onHide:function(){
+    wx.stopBluetoothDevicesDiscovery({
+      success: function (res) {
+        console.info("[/wx-stopBluetoothDevicesDiscovery]", res)
+      }
+    })
   },
 
   serachBlue: function () {
     var that = this;
-    // console.log("点击搜索");
+      /*****开始搜寻附近的蓝牙外围设备。(耗时操作)****/
     wx.startBluetoothDevicesDiscovery({
       success: function (res) {
-        // console.log("开始搜索附近蓝牙设备")
-        // console.log(res)
+        console.info("[/wx_Discovery]开始搜索附近蓝牙设备",res)
       },
       fail: function (res) {
-        console.log("搜索失败", res);
+        console.error("[/wx_Discovery]搜索失败", res);
         if (res.errCode == 10001) {
           wx.showModal({
             title: ' 温馨提示',
@@ -74,29 +81,29 @@ Page({
         }
       },
       complete:function(res){
-        console.log("....startDiscovery",res);
-        //查询到可以连接的蓝牙设备
-        wx.onBluetoothDeviceFound(function (devices) {
-          // console.log(devices)
-          // console.log('new device list has founded')
-          // console.log("----new----", devices.devices[0]);//devices
-          // console.log('设备RSSI' + devices.devices[0].RSSI)
-          // console.log('设备id' + devices.devices[0].deviceId)
-          // console.log('设备name' + devices.devices[0].name)
-          // console.log('设备advertisServiceUUIDs' + devices.devices[0].advertisServiceUUIDs)
-          // console.log("设备的advertisData" + that._arrayBufferToBase64(devices.devices[0].advertisData)) ;
-          devices.devices[0].advertisData = that._arrayBufferToBase64(devices.devices[0].advertisData);
-          temp.push(devices.devices[0])
-          that.setData({
-            list: temp
-          })
-        })
+        // console.log("....startDiscovery",res);
+        // //查询到可以连接的蓝牙设备
+        // wx.onBluetoothDeviceFound(function (devices) {
+        //   //console.log(devices)
+        //   console.log('new device list has founded')
+        //   console.log("----new----", devices.devices[0]);//devices
+        //   console.log('设备RSSI' + devices.devices[0].RSSI)
+        //   console.log('设备id' + devices.devices[0].deviceId)
+        //   console.log('设备name' + devices.devices[0].name)
+        //   console.log('设备advertisServiceUUIDs' + devices.devices[0].advertisServiceUUIDs)
+        //   console.log("设备的advertisData" + that._arrayBufferToBase64(devices.devices[0].advertisData)) ;
+        //   devices.devices[0].advertisData = that._arrayBufferToBase64(devices.devices[0].advertisData);
+        //   temp.push(devices.devices[0])
+        //   that.setData({
+        //     list: temp
+        //   })
+        // })
       }
     })
   },
-  //点击事件处理
+
+  //页面路由 conn
   bindViewTap: function (e) {
-    wx.setStorageSync('machine', temp);
     // wx.stopBluetoothDevicesDiscovery({
     //   success: function (res) {
     //     console.log(res)
@@ -109,11 +116,12 @@ Page({
     })
     setTimeout(function(){
       wx.hideLoading()
-    },3000);
+    },2000);
     wx.redirectTo({
       url: '../conn/conn?deviceId=' + title + '&name=' + name
     })
   },
+
   _base64ToArrayBuffer(base64) {
     var binary_string = base64;
     var len = binary_string.length;
@@ -123,6 +131,7 @@ Page({
     }
     return bytes.buffer;
   },
+
   _arrayBufferToBase64(buffer) {
     var binary = '';
     var bytes = new Uint8Array(buffer);

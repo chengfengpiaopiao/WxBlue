@@ -38,19 +38,88 @@ Page({
     utils.showWrapLoading({ "title": "连接低功耗蓝牙中", mask: true, duration: 2000 });
     that.setData({ deviceId: option.deviceId });
     that.setData({ name: option.name });
+  },
+
+  onShow: function () {
+    that = this;
+    var connected = false;
+    getInfoTimer = undefined;
+    let deviceConnected;
+    /*****根据uuid 获取处于已连接状态的设备********* */
+
+    // wx.getConnectedBluetoothDevices({
+    //   success: function (res) {
+    //     console.info("[/getConnectedBluetoothDevices]", res)
+    //     //如果设备已经在连接列表里面就不连接
+    //     let devices = res.devices
+    //     for (var key in devices) {
+    //       if (that.data.deviceId == devices[key].deviceId){
+    //         connected = true;
+    //         //deviceConnected = true;
+    //         break;
+    //       }else{
+    //         connected = false;
+    //         //deviceConnected = false;
+    //       }
+    //     }
+    //   },
+    //   complete:function(){
+    //     // if (deviceConnected){
+    //     //   that._getBLEDeviceServices();
+    //     // }
+    //     console.error("connected", connected);
+    //     if (connected) {
+    //       that._getBLEDeviceServices();
+    //       return;
+    //     } else {
+    //       that._createBLEConnection();
+    //     }
+    //   }
+    // })
+    wx.closeBLEConnection({
+      deviceId: that.data.deviceId,
+      success: function (res) {
+        console.info("[/wx-closeBLEConnection]关闭蓝牙连接", res)
+      },
+      fail: function (res) {
+        console.error("[/wx-closeBLEConnection]关闭蓝牙连接", res)
+      },
+      complete: function (res) {
+        console.error("[/wx-closeBLEConnection]关闭蓝牙连接", res)
+        that._createBLEConnection();
+      }
+    })
+
+    /*********获取本机蓝牙适配器状态********* */
+    wx.getBluetoothAdapterState({
+      success: function (res) {
+        console.info("[/getBluetoothAdapterState]", res)
+      }
+    })
+
+    //监听硬件连接状态
+    // wx.onBLEConnectionStateChanged(function (res) {
+    //   console.info("[/onBLEConnectionStateChanged]", res)
+    //   // connected = res.connected
+    //   // console.error("blueState", connected);
+    //   if (!res.connected){
+    //     connected = false;
+    //   }
+    // })
+  },
+
+  _createBLEConnection:function(){
+    console.info("[/_createBLEConnection]...");
     wx.createBLEConnection({
       deviceId: that.data.deviceId,
       success: function (res) {
+        console.info("[/wx/createBLEConnection]", res)
         utils.showWrapLoading({ "title": "硬件连接成功", mask: true, duration: 2000 });
-        wx.getBLEDeviceServices({
-          deviceId: that.data.deviceId,
-          success: function (res) {
-            var servicesStr = res.services;
-            that.setData({ services: servicesStr });
-          }
-        })
+        that._getBLEDeviceServices();
+        //connected = true;
       },
       fail: function (res) {
+        console.error("[/createBLEConnection]", res);
         wx.showToast({
           title: '连接失败',
           duration: 2000
@@ -58,15 +127,36 @@ Page({
         wx.hideLoading();
       },
       complete: function (res) {
+        console.error("[/createBLEConnection]",res);
+        Bluetooth.util.dealBlueError(res)
       }
     })
   },
 
-  onShow: function () {
-    //监听硬件连接状态
-    wx.onBLEConnectionStateChanged(function (res) {
+  _getBLEDeviceServices:function(){
+    wx.getBLEDeviceServices({
+      deviceId: that.data.deviceId,
+      success: function (res) {
+        var servicesStr = res.services;
+        that.setData({ services: servicesStr });
+      }
     })
-    getInfoTimer = undefined;
+  },
+
+  onHide: function () {
+    /*************断开与低功耗蓝牙设备的连接************ */
+    wx.closeBLEConnection({
+      deviceId: that.data.deviceId,
+      success: function (res) {
+        console.info("[/wx-closeBLEConnection]关闭蓝牙连接", res)
+      },
+      fail:function(res){
+        console.error("[/wx-closeBLEConnection]关闭蓝牙连接", res)
+      },
+      complete:function(res){
+        console.error("[/wx-closeBLEConnection]关闭蓝牙连接", res)
+      }
+    })
   },
 
   getCharaties: function (uuid) {
@@ -89,7 +179,6 @@ Page({
 
       })
     }, 1500);
-
   },
 
   //开锁
@@ -98,7 +187,9 @@ Page({
   },
 
   sendGetInfo: function () {
-    deviceSendData = false;//重新获取gitInfo
+    deviceSendData = false;//重新获取gitInfo (time + MCUID)
+    hasInit = false;
+    getInfoTimer = undefined;
     var promiseRetryInstance = utils.promiseRetry({ times: 2, delay: 3000 });
     return promiseRetryInstance(that.sendDataToDev)
       .then(function () {
@@ -111,25 +202,27 @@ Page({
               return;
             }
             getInfoTimer = setInterval(function () {
-              console.error("deviceSendData", deviceSendData);
-              console.info("times", times);
-              that.sendDataToDev(that.data.cd20, "$getinfo;")//Promise
+              //console.error("deviceSendData", deviceSendData);
               times++;
-              // if (times > 2) {
-              //   clearInterval(getInfoTimer);
-              // }
-              if (deviceSendData){
+              console.info("lunxun times", times);
+              that.sendDataToDev(that.data.cd20, "$getInfo;")//Promise;
+              if (times > 2) {
                 clearInterval(getInfoTimer);
               }
-            }, 1000);
+              if (deviceSendData){
+                clearInterval(getInfoTimer);
+              } if (deviceSendData){
+                clearInterval(getInfoTimer);
+              }
+            }, 3000);
           }
         }else{
-          Promise.resolve();
+          //Promise.resolve();
         }
     }, function (rejectData) {
-      console.log("[/reject]", rejectData);
+      console.error("[/reject]", rejectData);
       utils.showWrapLoading({
-        "title": data,
+        "title": "数据发送失败",
         mask: true,
         duration: 2000
       });
@@ -137,8 +230,9 @@ Page({
     });
   },
 
+ 
   sendDataToDev: function (chara, aim){
-    console.log("sending.................................");
+    console.log("sending................................." + aim == undefined ? "" : aim);
     var arrayBuffer = new ArrayBuffer();
     var charaStr = chara;
     let dataView = undefined;
@@ -157,6 +251,7 @@ Page({
           dataView.setUint8(i, valueArray[i])
         }
       break;
+
       case "lock":
         var encryptData = utils.Encrypt(that.data.togtherTime + "lock");
         var valueArray = Crypto.util.hexToBytes("24" + encryptData + "3b");
@@ -173,7 +268,7 @@ Page({
         }
         arrayBuffer = that._base64ToArrayBuffer(aim);
         console.info("[/GET-INFO]app 发送数据 to 设备", that._arrayBufferToBase64(arrayBuffer));
-      break
+      break;
     }
 
     if (!charaStr){
@@ -186,8 +281,12 @@ Page({
     }, arrayBuffer)
   },
 
+  _arrayToArrayBuffer:function(orignArray){
+
+  },
+
   //解密getInfo数据
-  dealdeviceGetInfo: function (dataView,STATE){
+  _dealOrderFormDevice: function (dataView,STATE){
     var dataToStr = ""
     for (let i = 1; i < dataView.byteLength - 1; i++) {//字节数组转16进制
       var orign = dataView.getUint8(i).toString(16);//十进制转16进制
@@ -202,7 +301,7 @@ Page({
     }
 
     console.log("[/device]设备 返回数据 to app string: ", dataToStr);
-    var decryptData = utils.Decrypt(dataToStr);
+    var decryptData = utils.Decrypt(dataToStr);//解密
 
     switch(STATE){
       case "GET":
@@ -214,13 +313,15 @@ Page({
           mcuid: mcuid,
           togtherTime: togtherTime
         });
-        //开锁 || 关锁
+        //开锁 || 关锁  延迟1500ms
         clearInterval(getInfoTimer);
-        if (!that.data.lockState) {
-          that.sendDataToDev(that.data.cd20, "unlock")
-        } else {
-          that.sendDataToDev(that.data.cd20, "lock")
-        }
+        setTimeout(function(){
+          if (!that.data.lockState) {
+            that.sendDataToDev(that.data.cd20, "unlock")
+          } else {
+            that.sendDataToDev(that.data.cd20, "lock")
+          }
+        },1500);
       break;
       case "LOCK":
         var togtherTime = decryptData.substring(0, 10);
@@ -238,7 +339,7 @@ Page({
           that.setData({
             lockState: false,
             lockData: "开锁"
-          }); aA
+          });
           utils.showWrapLoading({ "title": "关锁成功", mask: true, duration: 2000 });
         }
       break;
@@ -248,25 +349,30 @@ Page({
   developCahara: function () {
     var that = this;
     setTimeout(function () {
+      //接收设备数据
       wx.onBLECharacteristicValueChange(function (characteristic) {
+
         console.log("receiving.................................");
         let charaId = characteristic.characteristicId
         var arrayBuffer = characteristic.value
         console.log("设备 send data to 小程序 ---> " + " 字节长度  = ", arrayBuffer.byteLength);
         var dataView = new DataView(arrayBuffer)
-        
+        //getInfo
         if (!hasInit && arrayBuffer.byteLength == 20){
           deviceSendData = true;//轮询
           clearInterval(getInfoTimer);
           hasInit = true;
-          that.dealdeviceGetInfo(dataView,"GET"); //处理getInfo数据
+          that._dealOrderFormDevice(dataView,"GET"); //处理getInfo数据
           return
         }
-
+        //如果未被初始化,并且字节长度有错误,说明数据有误
         if (!hasInit && arrayBuffer.byteLength != 20){
+          utils.showWrapLoading({ "title": "未初始化,并且数据有误", mask: false, duration: 2000 });
           return;
         }
-        that.dealdeviceGetInfo(dataView, "LOCK")
+        
+        that._dealOrderFormDevice(dataView, "LOCK")
+
       })
  
       wx.notifyBLECharacteristicValueChanged({

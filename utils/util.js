@@ -58,8 +58,9 @@ function Decrypt(word) {
 /****************************************BlueUtils*************************************** */
 var Bluetooth = (typeof window === 'undefined') ? module.exports.Bluetooth = {} : window.Bluetooth = {};
 
-var time = 0 ;
+//var time = 0 ;
 var util = Bluetooth.util = {
+
   writeDataToDevice: function (deviceParams, arrayBuffer){
   
     return new Promise(function (resolve, reject) {
@@ -69,12 +70,54 @@ var util = Bluetooth.util = {
         serviceId: deviceParams.serviceId,
         characteristicId: deviceParams.characteristicId,
         value: arrayBuffer,
-        success: resolve(),
+        success: resolve,
         fail: function(res){
           reject(res);
         },
       })
     })
+  },
+
+  dealBlueError:function(res){
+    let errorCode = res.errCode;
+    switch(errorCode){
+      case 10000:
+        showWrapLoading({"title": "连接设备中",mask: false,duration: 2000});
+      break;
+      case 10001:
+        showWrapLoading({ "title": "当前蓝牙适配器不可用", mask: false, duration: 2000 });
+      break;
+      case 10002:
+        showWrapLoading({ "title": "没有找到指定设备", mask: false, duration: 2000 });
+      break;
+      case 10003:
+        showWrapLoading({ "title": "连接失败", mask: false, duration: 2000 });
+      break;
+      case 10004:
+        showWrapLoading({ "title": "没有找到指定服务", mask: false, duration: 2000 });
+      break;
+      case 10005:
+        showWrapLoading({ "title": "没有找到指定特征值", mask: false, duration: 2000 });
+      break;
+      case 10006:
+        showWrapLoading({ "title": "当前连接已断开", mask: false, duration: 2000 });
+      break;
+      case 10007:
+        showWrapLoading({ "title": "当前特征值不支持此操作", mask: false, duration: 2000 });
+      break;
+      case 10008:
+        showWrapLoading({ "title": "其余所有系统上报的异常", mask: false, duration: 2000 });
+      break;
+      case 10009:
+        showWrapLoading({ "title": "Android 系统特有，系统版本低于 4.3 不支持BLE", mask: false, duration: 2000 });
+      break;
+      case 10010:
+        showWrapLoading({ "title": "没有找到指定描述符", mask: false, duration: 2000 });
+      break;
+      case 10011:
+        showWrapLoading({ "title": "Android6.0以上系统因未打开定位导致搜寻蓝牙设备（startBluetoothDevicesDiscovery ）失败", mask: false, duration: 2000 });
+      break;
+    }
   }
 }
 
