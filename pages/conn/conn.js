@@ -40,8 +40,9 @@ Page({
     that.setData({ name: option.name });
   },
 
+  //10005 --> onShow直接发 没有特征值
+
   onShow: function () {
-    that = this;
     var connected = false;
     getInfoTimer = undefined;
     let deviceConnected;
@@ -76,19 +77,21 @@ Page({
     //     }
     //   }
     // })
+
     wx.closeBLEConnection({
       deviceId: that.data.deviceId,
       success: function (res) {
         console.info("[/wx-closeBLEConnection]关闭蓝牙连接", res)
       },
       fail: function (res) {
-        console.error("[/wx-closeBLEConnection]关闭蓝牙连接", res)
+        //console.error("[/wx-closeBLEConnection]关闭蓝牙连接", res)
       },
       complete: function (res) {
-        console.error("[/wx-closeBLEConnection]关闭蓝牙连接", res)
+        //console.error("[/wx-closeBLEConnection]关闭蓝牙连接", res)
         that._createBLEConnection();
       }
     })
+    //that._createBLEConnection();
 
     /*********获取本机蓝牙适配器状态********* */
     wx.getBluetoothAdapterState({
@@ -116,7 +119,6 @@ Page({
         console.info("[/wx/createBLEConnection]", res)
         utils.showWrapLoading({ "title": "硬件连接成功", mask: true, duration: 2000 });
         that._getBLEDeviceServices();
-        //connected = true;
       },
       fail: function (res) {
         console.error("[/createBLEConnection]", res);
@@ -137,26 +139,46 @@ Page({
     wx.getBLEDeviceServices({
       deviceId: that.data.deviceId,
       success: function (res) {
-        var servicesStr = res.services;
-        that.setData({ services: servicesStr });
+        var deviceLists = res.services;
+        that.setData({ 
+          services: deviceLists 
+        });
+        console.info("[/wx-getBLEDeviceServices]", deviceLists);
+
+        for (let I = 0; I < deviceLists.length; I++) {
+          let uuidService = deviceLists[I].uuid
+          if (uuidService.indexOf("0000FFE0") != -1) {
+            that.setData({
+              serviceId: uuidService
+            });
+          }
+        }
+        console.log("serviceId : ", that.data.serviceId);
+        console.log("charaC20 : ", that.data.cd20);
+        if (that.data.serviceId){
+          that.getCharaties();
+        }
       }
     })
   },
 
   onHide: function () {
     /*************断开与低功耗蓝牙设备的连接************ */
-    wx.closeBLEConnection({
-      deviceId: that.data.deviceId,
-      success: function (res) {
-        console.info("[/wx-closeBLEConnection]关闭蓝牙连接", res)
-      },
-      fail:function(res){
-        console.error("[/wx-closeBLEConnection]关闭蓝牙连接", res)
-      },
-      complete:function(res){
-        console.error("[/wx-closeBLEConnection]关闭蓝牙连接", res)
-      }
-    })
+
+    // wx.closeBLEConnection({
+    //   deviceId: that.data.deviceId,
+    //   success: function (res) {
+    //     console.info("[/wx-closeBLEConnection]关闭蓝牙连接", res)
+    //   },
+    //   fail:function(res){
+    //     console.error("[/wx-closeBLEConnection]关闭蓝牙连接", res)
+    //   },
+    //   complete:function(res){
+    //     console.error("[/wx-closeBLEConnection]关闭蓝牙连接", res)
+    //   }
+    // })
+    console.log("onHide");
+    
   },
 
   getCharaties: function (uuid) {
@@ -166,10 +188,45 @@ Page({
         // 这里的 deviceId 需要在上面的 getBluetoothDevices
         deviceId: that.data.deviceId,
         // 这里的 serviceId 需要在上面的 getBLEDeviceServices 接口中获取
-        serviceId: uuid,
+        serviceId: uuid ? uuid : that.data.serviceId,
         success: function (res) {
           var characteristicsStr = res.characteristics;
-          that.setData({ characteristics: characteristicsStr });
+          console.info("[/wx-getBLEDeviceCharacteristics]", characteristicsStr);
+          that.setData({ 
+            characteristics: characteristicsStr 
+          });
+
+          let characteristicsArrays = res.characteristics;
+          for (let I = 0; I < characteristicsArrays.length; I++) {
+            let characteristic = characteristicsArrays[I];
+            let characteristicIdStr = characteristic.uuid.toString();
+            if (characteristicIdStr.indexOf("0000FFF1") != -1 || characteristicIdStr.indexOf("00002A23") != -1) {
+              const fff1 = characteristic.uuid;
+              console.log("fff1", fff1);
+              that.setData({ fff1: fff1 });
+            }
+            if (characteristicIdStr.indexOf("0000FFF6") != -1 || characteristicIdStr.indexOf("00002A28") != -1) {
+              const fff6 = characteristic.uuid;
+              console.log("fff6", fff6);
+              that.setData({ fff6: fff6 });
+            }
+            if (characteristicIdStr.indexOf("0000FFE2") != -1) {
+              const fff1 = characteristic.uuid;
+              console.log("FFE1", fff1);
+              that.setData({ fff1: fff1 });
+            }
+
+            if (characteristicIdStr.indexOf("0000FFE1") != -1) {
+              const cd20 = characteristic.uuid;
+              console.log("cd20", cd20);
+              that.setData({ 
+                cd20: cd20,
+                currentUUID: cd20
+              });
+              that.developCahara();
+            }
+          }
+
         }, fail: function (res) {
           console.log(res);
         },
@@ -205,7 +262,7 @@ Page({
               //console.error("deviceSendData", deviceSendData);
               times++;
               console.info("lunxun times", times);
-              that.sendDataToDev(that.data.cd20, "$getInfo;")//Promise;
+              that.sendDataToDev(that.data.cd20, "$getinfo;")//Promise;
               if (times > 2) {
                 clearInterval(getInfoTimer);
               }
@@ -232,12 +289,12 @@ Page({
 
  
   sendDataToDev: function (chara, aim){
-    console.log("sending................................." + aim == undefined ? "" : aim);
+    console.log("sending.................................", aim == undefined ?"$getinfo;":aim);
     var arrayBuffer = new ArrayBuffer();
     var charaStr = chara;
     let dataView = undefined;
     switch (aim){
-      case "$getInfo;":
+      case "$getinfo;":
         arrayBuffer = that._base64ToArrayBuffer(aim);
         console.info("[/GET-INFO]app 发送数据 to 设备 ", that._arrayBufferToBase64(arrayBuffer));
       break;
@@ -264,7 +321,7 @@ Page({
       break;
       default:
         if(!aim){
-          aim = "$getInfo;"
+          aim = "$getinfo;"
         }
         arrayBuffer = that._base64ToArrayBuffer(aim);
         console.info("[/GET-INFO]app 发送数据 to 设备", that._arrayBufferToBase64(arrayBuffer));
@@ -470,7 +527,9 @@ Page({
     })
     var uuid = e.currentTarget.dataset.uuid;
     var that = this;
-    that.setData({ currentUUID: uuid });
+    that.setData({ 
+      currentUUID: uuid 
+    });
     //顺序开发特征值
 
     that.setData({

@@ -22,6 +22,8 @@ App({
     /******** */
     // this.testObject();
     // this.testPromise();
+    let destArray = this.calXios([1900, 1900,1986,1000,1700,1680,1389]);
+    console.info(destArray);
   },
 
   getUserInfo: function (cb) {
@@ -90,5 +92,20 @@ App({
     userInfo: null,
     time: "",
     connectedDevices:[]
+  },
+  /***********************lifeCycle************************ */
+  onHide:function(){
+    console.error("[/app-cycle]");
+  },
+
+  /***********************utils************************ */
+  calXios:function(originArray){
+    //0-4095
+    var start = 0;
+    var end = 4095;
+    var height = 486
+    return originArray.map(function(item){
+      return parseFloat(((item - start) / (end - start) * 486).toFixed(2))
+    })
   }
 })
