@@ -55,8 +55,8 @@ Page({
     // that.testPromise();
     // that.testBindApplyCall();
     // that.testMap([0,1,2,3]);
-    // that.testCurry();
-    // that.testCurry2();
+    that.testCurry();
+    that.testCurry2();
     // var fun = that.testCloser();
     // console.info("[/testCloser]", fun(100));
 
@@ -84,6 +84,79 @@ Page({
     // }).then(function(data){
     //   console.log("three" + data);
     // });
+
+    // that.getNumber()
+    //   .then(
+    //   function (data) {
+    //     console.log('resolved');
+    //     console.log(data);
+    //     return Promise.resolve(data);
+    //   }
+    // ).then(function (reason) {
+    //   console.log(reason);
+    //   return that.getNumber()
+    //   //return Promise.reject("数字太大");
+    //   }).then(function (reason) {
+    //     console.log(reason);
+    //     return that.getNumber()
+    //   }).catch(function (reason) {
+    //     console.log('rejected2');
+    //     console.log(reason);
+    //   });
+
+    // that.getNumber2(100)
+    //   .then(
+    //   function (data) {
+    //     console.log('resolved');
+    //     console.log(data);
+    //     return Promise.resolve(data);
+    //   }
+    // ).then(function (reason) {
+    //   console.log(reason);
+    //   //return that.getNumber2()
+    //   return Promise.reject("session失效");
+    //   }).then(function (reason) {
+    //     console.log(reason);
+    //     return that.getNumber()
+    //   }).catch(function (reason) {
+    //     console.log('rejected2');
+    //     console.log(reason);
+    //     //重新请求
+    //     that.getNumber().then(function (data) {
+    //       console.log('resolved2');
+    //       console.log(data);
+    //       return Promise.resolve(data);
+    //     })
+    //   });
+
+    that.testP().catch(function (reason) {
+      console.log(reason);
+      //重新请求
+      //that.testP();
+      return Promise.reject(reason);
+    }).catch(function (reason) {
+      console.log(reason + "er");
+      //重新请求
+      //that.testP();
+    });
+  },
+
+  testP:function(){
+    return that.getNumber2(100)
+      .then(
+      function (data) {
+        console.log('resolved');
+        console.log(data);
+        return Promise.resolve(data);
+      }
+      ).then(function (reason) {
+        console.log(reason);
+        //return that.getNumber2()
+        return Promise.reject("session失效");
+      }).then(function (reason) {
+        console.log(reason);
+        return that.getNumber()
+      });
   },
 
   /*****************************************utils*************************** */
@@ -176,6 +249,43 @@ Page({
     //.catch()
   },
 
+
+  getNumber : function (){
+    var p = new Promise(function (resolve, reject) {
+      //做一些异步操作
+      setTimeout(function () {
+        var num = Math.ceil(Math.random() * 10); //生成1-10的随机数
+        // if (num <= 5) {
+        //   resolve(num);
+        // }
+        // else {
+        //   reject('数字太大了');
+        // }
+        resolve(num);
+      }, 1000);
+    });
+    return p;            
+  },
+
+
+  getNumber2: function (num) {
+    var p = new Promise(function (resolve, reject) {
+      //做一些异步操作
+      setTimeout(function () {
+        //var num = Math.ceil(Math.random() * 10); //生成1-10的随机数
+        // if (num <= 5) {
+        //   resolve(num);
+        // }
+        // else {
+        //   reject('数字太大了');
+        // }
+        resolve(num);
+      }, 1000);
+    });
+    return p;
+  },
+
+
   testBindApplyCall:function(){
     function fn(a, b, c, d) {
       　　console.log(a, b, c, d);
@@ -253,6 +363,7 @@ Page({
     }
     //debugger
     var mapSQ = currying(map, square);
+    console.info("[/concat]", [square].concat([1, 2, 3, 4, 5]))
     console.info("[/curry2]", mapSQ([1, 2, 3, 4, 5]));
     console.info("[/curry2]", mapSQ([6, 7, 8, 9, 10]));
     console.info("[/curry2]", mapSQ([10, 20, 30, 40, 50]));

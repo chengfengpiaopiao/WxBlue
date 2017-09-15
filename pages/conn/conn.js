@@ -262,7 +262,7 @@ Page({
               //console.error("deviceSendData", deviceSendData);
               times++;
               console.info("lunxun times", times);
-              that.sendDataToDev(that.data.cd20, "$getinfo;")//Promise;
+              that.sendDataToDev(that.data.cd20, "$getInfo;")//Promise;
               if (times > 2) {
                 clearInterval(getInfoTimer);
               }
@@ -289,12 +289,12 @@ Page({
 
  
   sendDataToDev: function (chara, aim){
-    console.log("sending.................................", aim == undefined ?"$getinfo;":aim);
+    console.log("sending.................................", aim == undefined ?"$getInfo;":aim);
     var arrayBuffer = new ArrayBuffer();
     var charaStr = chara;
     let dataView = undefined;
     switch (aim){
-      case "$getinfo;":
+      case "$getInfo;":
         arrayBuffer = that._base64ToArrayBuffer(aim);
         console.info("[/GET-INFO]app 发送数据 to 设备 ", that._arrayBufferToBase64(arrayBuffer));
       break;
@@ -321,7 +321,7 @@ Page({
       break;
       default:
         if(!aim){
-          aim = "$getinfo;"
+          aim = "$getInfo;"
         }
         arrayBuffer = that._base64ToArrayBuffer(aim);
         console.info("[/GET-INFO]app 发送数据 to 设备", that._arrayBufferToBase64(arrayBuffer));

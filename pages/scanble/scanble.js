@@ -117,7 +117,7 @@ Page({
     setTimeout(function(){
       wx.hideLoading()
     },2000);
-    wx.redirectTo({
+    wx.navigateTo({
       url: '../conn/conn?deviceId=' + title + '&name=' + name
     })
   },
