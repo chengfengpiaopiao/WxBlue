@@ -1,14 +1,22 @@
-<!--index.wxml-->
-<view class="container" >
-  <!--<view  bindtap="bindViewTap" class="userinfo">
+
+<!-- <view class="canvas-container">
+<canvas class="canvas" canvas-id="lineCanvas"></canvas>
+</view> -->
+
+ <view class="container" > 
+
+
+    <view  bindtap="bindViewTap" class="userinfo">
     <image class="userinfo-avatar" src="{{userInfo.avatarUrl}}" background-size="cover"></image>
     <text class="userinfo-nickname">{{userInfo.nickName}}</text>
-  </view>-->
-  <view class="usermotto" bindtap="bindViewTap1" >
+  </view>  
+
+
+   <view class="usermotto" bindtap="bindViewTap1" >
     <text class="user-motto" style="color:#003366;font-size:40rpx;font-weight:800">①打开蓝牙适配器</text>
   </view>
   <button style="width:80%;margin-top:120rpx;"bindtap="encrypting">加密测试</button>
   <view style="color:gray;font-weight:800;width:80%;text-align:center; word-wrap: break-word;">{{encryptData}}</view>
   <button style="width:80%;margin-top:40rpx;"bindtap="decrypting">解密测试</button>
   <text style="color:gray;font-weight:800;width:80%;text-align:center; word-wrap: break-word;">{{decryptData}}</text>
-</view>
+</view> 

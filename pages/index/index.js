@@ -2,9 +2,39 @@
 //获取应用实例
 var app = getApp()
 var utils = require('../../utils/util');
+var promiseUtil = require('../../utils/promiseUtil');
 var Bluetooth = require('../../utils/util').Bluetooth;
 var encStr;
 var that;
+
+Promise.prototype.finally = function (callback) {
+  var Promise = this.constructor;
+  return this.then(
+    callback,callback
+  );
+}
+
+// Promise.prototype.finally = function (callback) {
+//   var Promise = this.constructor;
+//   return this.then(
+//     function (value) {
+//       Promise.resolve(callback()).then(
+//         function () {
+//           return value;
+//         }
+//       );
+//     },
+//     function (reason) {
+//       Promise.resolve(callback()).then(
+//         function () {
+//           throw reason;
+//         }
+//       );
+//     }
+//   );
+// }
+
+
 Page({
   data: {
     motto: 'Hello World',
@@ -49,6 +79,40 @@ Page({
   },
 
   onLoad: function () {
+
+    var Charts = require('../../utils/wxcharts.js');
+    new Charts({
+      canvasId: 'lineCanvas',
+      type: 'line',
+      categories: ['2012', '2013', '2014', '2015', '2016', '2017', "2018", "2019", "2020", '2012', '2013', '2014', '2015', '2016', '2017', "2018", "2019", "2020"],
+      extra: {
+        lineStyle: 'curve'
+      },
+      enableScroll:true,
+      series: [{
+        name: '成交量1',
+        data: [0.15, 0.2, 0.45, 0.37, 0.4, 0.8, 0.5, 0.7, 0.3, 0.15, 0.2, 0.45, 0.37, 0.4, 0.8, 0.5, 0.7, 0.3],
+        format: function (val) {
+          return val.toFixed(2) + '万';
+        }
+      }, {
+        name: '成交量2',
+        data: [0.30, 0.37, 0.65, 0.78, 0.69, 0.94, 0.78, 0.69, 0.94, 0.30, 0.37, 0.65, 0.78, 0.69, 0.94, 0.78, 0.69, 0.94],
+        format: function (val) {
+          return val.toFixed(2) + '万';
+        }
+      }],
+      yAxis: {
+        title: '成交金额 (万元)',
+        format: function (val) {
+          return val.toFixed(2);
+        },
+        min: 0
+      },
+      width: 320,
+      height: 400
+    });
+
     that = this;
     
     // console.info("Bluetooth", Bluetooth);
@@ -129,16 +193,89 @@ Page({
     //     })
     //   });
 
+    // setTimeout(function(){
+    //   wx.showLoading({
+    //     title: 'hello',
+    //   })
+    // },-2000);
+
     that.testP().catch(function (reason) {
       console.log(reason);
       //重新请求
       //that.testP();
-      return Promise.reject(reason);
+      //return Promise.reject(reason);
+
+      return new Promise(function (resolve, reject) {
+        setTimeout(resolve(reason), 4000);
+      });
+
+
     }).catch(function (reason) {
       console.log(reason + "er");
       //重新请求
       //that.testP();
+      //return Promise.reject("catch异常");
+    }).finally(function(reason){
+      console.log("finally" + reason);
     });
+     
+
+    //testFinally
+    Promise
+      .all([promiseUtil.runAsyncTask("任务1"), promiseUtil.runAsyncTask("任务2",1000), promiseUtil.runAsyncTask("任务3",3000)])
+      .then(function (results) {
+        console.log(results);
+      }).finally(function(){
+          console.log("[/Promise.all] finally ");
+      });
+
+
+
+
+    // var myData = new Date();
+    // var times = myData.getTime();//当前时间的毫秒数
+    // console.log("begain", times);
+    // var newTime = new Date(times);
+    // console.log("newTime", newTime)
+    
+    // that.testTimeout();
+  },
+
+  testOprate:function(){
+    return [
+      ...state,
+      {
+        text: action.text,
+        completed: false
+      }
+    ]
+  },
+
+  testTimeout:function(){
+     var time = 0.01
+     //1ms 1000 -08--12--16--20
+     //0.1 41--45-49-53
+     //10  25--35--45--55
+     //100  01--41--21--01
+     //0.01 08--12--16--20
+    let point = 0 
+    let exce= 0
+    var timer = setInterval(function(){
+      point ++
+      console.log(point);
+      if(point % 1000 == 0 ){
+        //输出时间
+        var myData = new Date();
+        var times = myData.getTime();//当前时间的毫秒数
+        console.log("end", times);
+        var newTime = new Date(times);
+        console.log("newTime", newTime)
+        exce ++
+        if(exce == 3){
+          clearInterval(timer);
+        }
+      }
+    },time)
   },
 
   testP:function(){
@@ -161,19 +298,25 @@ Page({
 
   /*****************************************utils*************************** */
   encrypting: function () { 
-    var time = new Date().getTime();
-    console.log(time);
-    app.globalData.time = time;
-    var dataStr = "0823111444unlock"
-    var dataArray = this.strToHexCharCode(dataStr);
-    console.log("dataArray", dataArray);
-    encStr = utils.Encrypt(dataStr);
+    // var time = new Date().getTime();
+    // console.log(time);
+    // app.globalData.time = time;
+    // var dataStr = "0823111444unlock"
+    // var dataArray = this.strToHexCharCode(dataStr);
+    // console.log("dataArray", dataArray);
+    // encStr = utils.Encrypt(dataStr);
 
-    console.log("加密后的结果为===", encStr.length);
-    console.log(encStr);
-    this.setData({
-      encryptData: encStr
+    // console.log("加密后的结果为===", encStr.length);
+    // console.log(encStr);
+    // this.setData({
+    //   encryptData: encStr
+    // })
+    wx.scanCode({
+      success: (res) => {
+        console.log(res)
+      }
     })
+
   },
 
   decrypting: function () {
